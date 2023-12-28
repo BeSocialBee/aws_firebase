@@ -29,35 +29,35 @@ const AdminHome = () => {
         try {
           //setSelectedCards([]);
           //setSelectedCard([]);
-          const response = await axios.get(`http://localhost:5000/getAllCards`);
-          setCards(response.data);
+          const response = await axios.get(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/getAllCards`);
+          //console.log(response.data.cardsData)
+          setCards(response.data.cardsData);
         } catch (error) {
           console.error('Error searching for card:', error);
         }
     };
-
-    const handleCardClick = async (cardId) => {
+ 
+    const handleCardClick = async (cardID) => {
       if (deleteMode) {
         setSelectedCards((prevSelected) => {
-          if (prevSelected.includes(cardId)) {
-            return prevSelected.filter((id) => id !== cardId);
+          if (prevSelected.includes(cardID)) {
+            return prevSelected.filter((id) => id !== cardID);
           } else {
-            return [...prevSelected, cardId];
+            return [...prevSelected, cardID];
           }
         });
       } else if(updateMode){
         // Select the card for update
-        setSelectedCard(cardId);
+        setSelectedCard(cardID);
         try {
-          const formData = new FormData();
-          formData.append("card_id", cardId);
-          console.log("card_id", cardId);
-          const response = await axios.post(`http://localhost:5000/getCardbyId`, formData); 
-          setSelectedCard(response.data);
+          console.log("card_id", cardID);
+          const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/getCardbyId`, cardID); 
+          setSelectedCard(response.data.cardData);
+          //console.log("response.data", response.data.cardData);
           setIsSelectedCard(true);
-          setDescription(response.data.description);
-          setPrice(response.data.price);
-          setQuantity(response.data.quantity);
+          setDescription(response.data.cardData.cardDescription);
+          setPrice(response.data.cardData.cardPrice);
+          setQuantity(response.data.cardData.cardQuantity);
         } catch (error) {
           console.error('Error searching for card:', error);
         }
@@ -70,15 +70,16 @@ const AdminHome = () => {
 
     const handleDeleteSelected = async () => {
       try {
-        const formData = new FormData();
-        // Convert the array to a JSON string and append it to FormData
-        // Iterate over the selectedCards array and append each card id to the same key
-        formData.append('selected_card_ids', JSON.stringify(selectedCards));
+        console.log(selectedCards)
         // Send a request to your server to delete the selected cards
-        const response = await axios.post("http://localhost:5000/deleteSelectedCards",formData);
+        const response = await axios.post("https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/deleteSelectedCards",selectedCards);
         console.log(response.data);
-  
         fetchAllCards();
+        setDeleteMode(false);
+        setUpdateMode(false);
+        setIsSelectedCard(false);
+        setSelectedCards([]);
+        setSelectedCard([]);
       } catch (error) {
         console.error("Error deleting selected cards:", error);
       }
@@ -94,14 +95,16 @@ const AdminHome = () => {
 
     const handleSelectAll = () => {
       setSelectedCards((prevSelected) =>
-        prevSelected.length === cards.length ? [] : cards.map((card) => card.id)
+        prevSelected.length === cards.length ? [] : cards.map((card) => card.cardID)
       );
     };
 
     const formatDate = (dateString) => {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', options);
+      const [datePart, timePart] = dateString.split('T');
+      const [day, month, year] = datePart.split('.');
+      const [hour, minute, second] = timePart.split(':');
+    
+      return `${month}.${day}.${year} at ${hour}:${minute}:${second}`;
     };
 
     const handleUpdate = () => {
@@ -119,14 +122,15 @@ const AdminHome = () => {
 
     const handleUpdateSelected = async (card) => {
       try {
-        const formData = new FormData();
-        formData.append("card_id", card.id);
-        formData.append("description", description);
-        formData.append("price", price);
-        formData.append("quantity", quantity);
+        const payload = {
+          cardID: card.cardID,
+          cardDescription: description,
+          cardPrice: price,
+          cardQuantity: quantity,
+      };
 
-        const response = await axios.post(`http://localhost:5000/updateCard`, formData);
-        console.log(response.data);
+        const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/updateCard`, payload);
+        //console.log(response.data);
         fetchAllCards();
         setSelectedCards([]);
         setSelectedCard([]);
@@ -168,30 +172,30 @@ const AdminHome = () => {
         <h2 className='collectionNameHeader'>{collectionName}</h2>
         <div className="rendered_card_container">
           {cardsByCollection[collectionName].map((card) => (
-           <div className={`admin_Cards_home ${selectedCards.includes(card.id) ? "selected" : ""}`}key={card.id} onClick={() => handleCardClick(card.id)}>
+           <div className={`admin_Cards_home ${selectedCards.includes(card.cardID) ? "selected" : ""}`}key={card.cardID} onClick={() => handleCardClick(card.cardID)}>
               
               <div className="card__content">
                       {deleteMode && (
-                        <input type="checkbox" checked={selectedCards.includes(card.id)} onChange={(e) => e.stopPropagation()} />
+                        <input type="checkbox" checked={selectedCards.includes(card.cardID)} onChange={(e) => e.stopPropagation()} />
                       )}
                       <div className="card__content_left">
-                        <img src={card.fileURL} alt=""/>
+                        <img src={card.cardURL} alt=""/>
                       </div>
                       
                       <div className="card__content_right">
-                        <h2 className="card__title">{card.title}</h2>
+                        <h2 className="card__title">{card.cardTitle}</h2>
                         <h4 className="card__collectionName">
-                          {card.collectionName}
+                          {card.cardCollectionName}
                         </h4>
-                        <h4 className="card__price">Price: ${card.price}</h4>
-                        <h4 className="card__rarity">Rarity: {card.rarity}</h4>
-                        <h4 className="card__quantity">Quantity: {card.quantity}</h4>
+                        <h4 className="card__price">Price: ${card.cardPrice}</h4>
+                        <h4 className="card__rarity">Rarity: {card.cardRarity}</h4>
+                        <h4 className="card__quantity">Quantity: {card.cardQuantity}</h4>
                       </div>
               </div>
 
               <div className="card__body">
-                <p className="card__description">{card.description}</p>
-                <h3 className="card__date">{formatDate(card.date)}</h3>
+                <p className="card__description">{card.cardDescription}</p>
+                <h3 className="card__date">{formatDate(card.cardDate)}</h3>
               </div>
             </div>
           ))}
@@ -266,29 +270,29 @@ const AdminHome = () => {
             <div className="scrollable-cards-container-admin">
               {cards &&
                 cards.map((card) => (
-                  <div className={`admin_Cards_home ${selectedCards.includes(card.id) ? "selected" : ""}`}key={card.id} onClick={() => handleCardClick(card.id)}>
+                  <div className={`admin_Cards_home ${selectedCards.includes(card.cardID) ? "selected" : ""}`}key={card.cardID} onClick={() => handleCardClick(card.cardID)}>
                     <div className="card__content">
                       {deleteMode && (
-                        <input type="checkbox" checked={selectedCards.includes(card.id)} onChange={(e) => e.stopPropagation()} />
+                        <input type="checkbox" checked={selectedCards.includes(card.cardID)} onChange={(e) => e.stopPropagation()} />
                       )}
                       <div className="card__content_left">
-                        <img src={card.fileURL} alt=""/>
+                        <img src={card.cardURL} alt=""/>
                       </div>
                       
                       <div className="card__content_right">
-                        <h2 className="card__title">{card.title}</h2>
+                        <h2 className="card__title">{card.cardTitle}</h2>
                         <h4 className="card__collectionName">
-                          {card.collectionName}
+                          {card.cardCollectionName}
                         </h4>
-                        <h4 className="card__price">Price: ${card.price}</h4>
-                        <h4 className="card__rarity">Rarity: {card.rarity}</h4>
-                        <h4 className="card__quantity">Quantity: {card.quantity}</h4>
+                        <h4 className="card__price">Price: ${card.cardPrice}</h4>
+                        <h4 className="card__rarity">Rarity: {card.cardRarity}</h4>
+                        <h4 className="card__quantity">Quantity: {card.cardQuantity}</h4>
                       </div>
                     </div>
 
                     <div className="card__body">
-                      <p className="card__description">{card.description}</p>
-                      <h3 className="card__date">{formatDate(card.date)}</h3>
+                      <p className="card__description">{card.cardDescription}</p>
+                      <h3 className="card__date">{formatDate(card.cardDate)}</h3>
                     </div>
                   </div>
                 ))}
@@ -296,15 +300,14 @@ const AdminHome = () => {
           ) : (
             <div className="update-form">
               <div className="update-left-part">
-                <h2 className="update_card_title">{selectedCard.title}: {selectedCard.collectionName}</h2>
-                <img src={selectedCard.fileURL} alt="" className="update_card_image" />
+                <h2 className="update_card_title">{selectedCard.cardTitle}: {selectedCard.cardCollectionName}</h2>
+                <img src={selectedCard.cardURL} alt="" className="update_card_image" />
                 <div className="update_card_details">
                   
-                  <h4 className="card__price">Price: ${selectedCard.price}</h4>
-                  <h4 className="card__rarity">Rarity: {selectedCard.rarity}</h4>
-                  <h4 className="card__quantity">Quantity: {selectedCard.quantity}</h4> 
-                  <h4 className="card__date">Date: {formatDate(selectedCard.date)}</h4>
-                  <p className="update_card_description"><h4>Description:</h4> {selectedCard.description}</p>
+                  <h4 className="card__price">Price: ${selectedCard.cardPrice}</h4>
+                  <h4 className="card__rarity">Rarity: {selectedCard.cardRarity}</h4>
+                  <h4 className="card__quantity">Quantity: {selectedCard.cardQuantity}</h4> 
+                  <h4 className="card__date">Date: {formatDate(selectedCard.cardDate)}</h4>
                 </div>
               </div>
 
@@ -326,6 +329,8 @@ const AdminHome = () => {
                   type="text"
                   className="form-control"
                   placeholder="Please Enter price"
+                  pattern="\d*"  // Regular expression to allow only numeric digits
+                  min={0}
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required

@@ -3,13 +3,16 @@ import AdminNavBar from './AdminNavBar.js';
 import AvatarEditor from 'react-avatar-editor';
 import "../styles/admin_viewavatars.css";
 import axios from 'axios';
+import {ref, uploadBytes, getDownloadURL} from "firebase/storage";
+import { storage } from "../firebase";
+import { v4 } from "uuid";
 
 const AdminViewAvatars = () => {
     const [avatarList, setAvatarList] = useState([]);
     const [newAvatar, setNewAvatar] = useState(null);
     const [editor, setEditor] = useState(null);
     const [scale, setScale] = useState(1);
-
+    
     useEffect(() => {
         fetchAvatarList();
     }, []);
@@ -17,23 +20,7 @@ const AdminViewAvatars = () => {
     const fetchAvatarList = async () => {
         try {
             const response = await axios.get(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/getAvatarlist`);
-            // Check if response.data is an object
-            if (response.data && typeof response.data === 'object') {
-                console.log("data: " ,response.data.avatarDatas);
-                // Assuming the response is an object with a "users" property
-                const avatarsData = response.data.avatarDatas;
-
-                // Check if usersData is defined
-                if (avatarsData) {
-                    // Now you can use usersData in your React component
-                    //console.log(avatarsData);
-                    setAvatarList(avatarsData);
-                } else {
-                    console.error('Error: "users" property is undefined in the response body.');
-                }
-            } else {
-                console.error('Error: Response body is not a valid object.');
-            }
+            setAvatarList(response.data.avatarsData);
         } catch (error) {
             console.error('Error fetching user list:', error);
         }
@@ -45,26 +32,32 @@ const AdminViewAvatars = () => {
     };
 
     const handleUploadAvatar = async () => {
-        try {
-            const formData = new FormData();
-            formData.append('avatar', newAvatar);
-            const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/uploadAvatar`, formData);
-            console.log(response.data)
-
-            // Fetch the updated avatar list after the new avatar is uploaded
-            fetchAvatarList();
-            // Reset the newAvatar state to clear the file input
-            setNewAvatar(null);
+        try {             
+            if (newAvatar == null) return;
+            const avatarName = `avatars/${newAvatar.name + v4()}`;
+            const imageRef = ref(storage, avatarName);
+            uploadBytes(imageRef, newAvatar).then((snapshot) => {
+                getDownloadURL(snapshot.ref).then(async (url) => {
+                    const payload = {
+                        avatarURL: url,
+                        avatarName: avatarName,
+                    };
+                    const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/uploadAvatar`, payload);
+                    console.log(response.data)
+                    // Fetch the updated avatar list after the new avatar is uploaded
+                    fetchAvatarList();
+                    // Reset the newAvatar state to clear the file input
+                    setNewAvatar(null);
+                });
+            });
         } catch (error) {
             console.error('Error uploading avatar:', error);
         }
     };
 
-    const handleDeleteAvatar = async (avatar_id) => {
+    const handleDeleteAvatar = async (avatar) => {
         try{
-            const formData = new FormData();
-            formData.append('avatar_id', avatar_id);
-            const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/deleteAvatar`, formData);
+            const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/deleteAvatar`, avatar);
             console.log(response)
             // Fetch the updated avatar list after the new avatar is uploaded
             fetchAvatarList();
@@ -82,10 +75,10 @@ const AdminViewAvatars = () => {
                 <h2 className='avatarlist_title'>Avatar List</h2>
                 <div className='avatarlist'>          
                     {avatarList.map((avatar) => (
-                        <div key={avatar.avatarDocID}>
+                        <div key={avatar.avatarID}>
                             {/* Assuming each avatar has an 'imageURL' property */}
-                            <img src={avatar.fileURL} alt={`Avatar ${avatar.avatarDocID}`} />
-                            <button className="avatar_delete_button"  onClick={() => handleDeleteAvatar(avatar.avatarDocID)}>
+                            <img src={avatar.avatarURL} alt={`Avatar ${avatar.avatarID}`} />
+                            <button className="avatar_delete_button"  onClick={() => handleDeleteAvatar(avatar)}>
                                 X
                             </button>
                         </div>

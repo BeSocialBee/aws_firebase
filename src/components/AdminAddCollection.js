@@ -16,11 +16,10 @@ const AdminAddCollection = () => {
 
   const fetchData = async () => {
         setCollectionName('');
-        
         try {
-            const response = await axios.get(`http://localhost:5000/getCollectionNames`);
-            setCollectionNames(response.data);
-            console.log(response.data);
+            const response = await axios.get(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/getCollectionNames`);
+            console.log(response.data.collectionsData);
+            setCollectionNames(response.data.collectionsData);      
         } catch (error) {
             console.error('Error fetching collection names:', error);
         }
@@ -29,10 +28,9 @@ const AdminAddCollection = () => {
 
     const insertCollection = async (collection) =>{
         try {
-          const formData = new FormData();
-          formData.append("collectionName", collectionName);
-          const response = await axios.post(`http://localhost:5000/addCollection`, formData);
-          window.location.reload();
+          const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/addCollection`, collectionName);
+          //window.location.reload();
+          fetchData();
           setCollectionName("");
         } catch (error) {
           console.error("Error inserting collection:", error);
@@ -48,14 +46,15 @@ const AdminAddCollection = () => {
                 
               <div className="form_container_collection">
                  
-                <div className="collection-names-container">
+                {collectionNames ? (<div className="collection-names-container">
                     <h2>Collection Names:</h2>
                     <ul>
                         {collectionNames.map((item, index) => (
                             <li key={index}>{index+1}.  {typeof item === 'object' ? item.collectionName : item}</li>
                         ))}
                     </ul>
-                </div>
+                </div>):(null)}
+                
                 
                 <div className='form'>
                     <label htmlFor = "collectionName" className='form-label'>Title</label>

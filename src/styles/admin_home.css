@@ -37,24 +37,21 @@
   }
   
   .wrapper_admin {
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    align-items: center;
     width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto; /* Enable vertical scrolling if the content overflows */
+
     background-color: #355969;
    
   }
 
   .scrollable-cards-container-admin {
-    margin: 2rem auto;
+    width: 1200px; /* Adjust the width as needed */
     display: flex;
-    gap: 1rem;
-    flex-wrap: wrap; /* Allow cards to wrap to the next line */
-    justify-content: center;
-    height: 800px; 
-    overflow-y: auto; /* Enable vertical scrolling */
-  }
+    flex-wrap: wrap; /* Allow items to wrap to the next row */
+    gap: 30px;}
 
   /* Add these styles to your existing CSS */
 
@@ -146,13 +143,14 @@ input[type="checkbox"] {
 
 .admin_Cards_home {
     width: 350px;
-    margin: 20px;
+    margin: 15px;
     border-radius: 5px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease-in-out;
     position: relative;
     background-color: #e6e9ec;
     z-index: 3;
+    max-height: 200px;
   }
 
   /* Styling for selected cards */
@@ -236,7 +234,7 @@ input[type="checkbox"] {
     align-items: center;
     height: 80%;
     width: 70%;
-    justify-content: space-around;
+    justify-content: center;
     background: rgba( 255, 255, 255, 0.4 );
     box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
     backdrop-filter: blur( 6px );
@@ -245,11 +243,12 @@ input[type="checkbox"] {
   }
 
   .update-left-part{
+    margin-right: 30px;
     height: 80%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    width: 50%;
+    width: 30%;
   }
 
   .update-form-fields{

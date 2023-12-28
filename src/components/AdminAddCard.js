@@ -2,6 +2,10 @@ import React,{useState,useEffect} from "react";
 import AdminNavBar from './AdminNavBar.js';
 import axios from 'axios';
 import "../styles/admin_addcard.css";
+import {ref, uploadBytes, getDownloadURL} from "firebase/storage";
+import { storage } from "../firebase";
+import { v4 } from "uuid";
+import { createCanvas, loadImage } from "canvas";
 
 const AdminAddCard = () => {
 
@@ -12,9 +16,8 @@ const AdminAddCard = () => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [image, setImage] = useState(""); 
-    const [price, setPrice] = useState("");
+    const [price, setPrice] = useState(1);
     const [previewUrl, setPreviewUrl] = useState("");
-    const [fileURL,setFileURL] = useState("");
     const [collectionName, setCollectionName] = useState("");
     const [quantity, setQuantity] = useState(1);
     const [rarity, setRarity] = useState("");
@@ -27,57 +30,81 @@ const AdminAddCard = () => {
     },[])
 
     const fetchCollections = async () => {
+        setCollectionName('');
         try {
-          const response = await axios.get('http://localhost:5000/getCollections', {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-          setCollections(response.data);
+            const response = await axios.get(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/getCollectionNames`);
+            //console.log(response.data.collectionsData);
+            setCollections(response.data.collectionsData);      
         } catch (error) {
-          console.error(error);
+            console.error('Error fetching collection names:', error);
         }
     };
     
     const insertCard = async (card) =>{
-        try {
-            const formData = new FormData();
-            formData.append("image", image);
-            formData.append("title", title);
-            formData.append("description", description);
-            formData.append("price", price);
-            formData.append("previewUrl", previewUrl);
-            formData.append("collectionName", collectionName);
-            formData.append("quantity", quantity);
-            formData.append("rarity", rarity);
-        
-            const response = await axios.post(`http://localhost:5000/addCard`, formData);
-            console.log(response.data)
-            
-            // Clear the form fields after inserting the card
-            setTitle("");
-            setDescription("");
-            setPrice("");
-            setImage(null);
-            setPreviewUrl(""); 
-            setCollectionName("");
-            setQuantity(1);
-            setRarity("");
-        
-            // Reset the file input value to clear it
-            document.getElementById("fileInput").value = "";
-        
-        } catch (error) {
+        try {   
+            if (image == null ||title === "" ||description === "" ||price<0 ||collectionName === "" ||quantity <1 ||rarity === "") return;          
+            const imageName = `cards/${image.name + v4()}`;
+            const imageRef = ref(storage, imageName);
+            uploadBytes(imageRef, image).then((snapshot) => {
+                getDownloadURL(snapshot.ref).then(async (url) => {        
+                    const payload = {
+                        cardURL: url,
+                        cardImageName: imageName,
+                        cardTitle: title,
+                        cardDescription: description,
+                        cardPrice: price,
+                        cardCollectionName: collectionName,
+                        cardQuantity: quantity,
+                        cardRarity: rarity,                        
+                    };
+                    console.log(payload)
+                    const response = await axios.post(`https://27igjfcj05.execute-api.us-east-1.amazonaws.com/adminStage/addCard`, payload);
+                    console.log(response.data)
+                    // Clear the form fields after inserting the card
+                    setTitle("");
+                    setDescription("");
+                    setPrice("");
+                    setImage(null);
+                    setPreviewUrl(""); 
+                    setCollectionName("");
+                    setQuantity(1);
+                    setRarity("");
+                });
+            });
+        }catch (error) {
             console.error("Error inserting card:", error);
         }
     };
 
-    const handleImageChange = (e) => {
+    const handleImageChange = async (e) => {
         const selectedFile = e.target.files[0];
-        setImage(selectedFile);
-        // If you want to preview the image, you can create a URL for the selected file
-        setPreviewUrl(URL.createObjectURL(selectedFile));
+        // Resize the image to 500x500 pixels using canvas
+        const resizedImage = await resizeImage(selectedFile, 500, 500);
+
+        setImage(resizedImage);
+        setPreviewUrl(URL.createObjectURL(resizedImage));
     };
+
+    const resizeImage = async (file, maxWidth, maxHeight) => {
+        return new Promise(async (resolve) => {
+          const image = await loadImage(URL.createObjectURL(file));
+          const canvas = createCanvas(maxWidth, maxHeight);
+          const ctx = canvas.getContext("2d");
+    
+          // Ensure the image is drawn within the canvas dimensions
+          ctx.drawImage(image, 0, 0, maxWidth, maxHeight);
+    
+          // Convert the canvas to a Blob
+          canvas.toBlob((blob) => {
+            const resizedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now(),
+            });
+    
+            resolve(resizedFile);
+          }, file.type);
+        });
+      };
 
     const handleIncrement = () => {
         if (quantity >= 0) {
@@ -124,7 +151,7 @@ const AdminAddCard = () => {
                 >
                 <option value="" disabled> Select a collection </option>
                 {collections.map((collection) => ( 
-                    <option key={collection.id} value={collection.collectionName}>
+                    <option key={collection.collectionID} value={collection.collectionName}>
                     {collection.collectionName}
                     </option>
                 ))}
@@ -156,6 +183,8 @@ const AdminAddCard = () => {
                 className="form-control"
                 placeholder="Please Enter price"
                 value={price}
+                min={0}
+                pattern="\d*"  // Regular expression to allow only numeric digits
                 onChange={(e) => setPrice(e.target.value)}
                 required
                 />
@@ -167,6 +196,7 @@ const AdminAddCard = () => {
                     className="form-control"
                     placeholder="Please Enter Quantity"
                     value={quantity}
+                    min={0}
                     onChange={(e) => setQuantity(parseInt(e.target.value, 10))}
                     required
                     />
